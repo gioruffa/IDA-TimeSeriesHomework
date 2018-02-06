@@ -1,0 +1,254 @@
+---
+title: "Homework 3 - Time Series"
+author: "Medhat Ahmed, Laura Ferrero, Eva Gil, Giorgio Ruffa"
+date: "17 gennaio 2018"
+output: html_document
+---
+
+Our dataset rappresent the total credit to the non-financial private sector annual rate. It is a monthly time
+series from January 2000 to December 2004.
+
+# Dataset Preparation and exploration
+We load the required libraries. We load the dataset and create a timeseries object with the frequency to 12 (as they are monthly data) in order to exploit seasonal plotting functions.
+
+```{r libs, message=FALSE}
+library(forecast)
+library(xlsx)
+library(ggplot2)
+library(tseries)
+library(car)
+library(astsa)
+library(outliers)
+
+NPO_Time_Series=read.xlsx("~/UniData/IDA/TimeSeries/data_g11.xlsx", sheetIndex = 1)
+NPO_Time_Series = ts(data = NPO_Time_Series$Tasa, frequency = 12, start=c(2000,1) , end=c(2004,12), names=c("rate") )
+```
+
+Let's give a rough look to the time series.
+```{r}
+summary(NPO_Time_Series)
+autoplot(NPO_Time_Series) 
+```
+
+The data ranges from 13.47 to 20.23 and we can immediately see that there is an inversion of trend after the beginning of 2003 and that the trend component may be the most influencing one. At first sight there is no sign of seasonal of cyclical behaviours.
+
+```{r, }
+NPO.acf = acf2(NPO_Time_Series)
+```
+
+The autocorrelation plot shows a slow dumping sine, while the partial correlation plot has a sharp cutoff after one. This may suggest an ARIMA modeling using only the auto regressive component of the type AR(1) or AR(2), but we will see this later.
+Another conclusion that can be taken without testing formally is that the series does not definetelly look as a stationary one.
+
+Another important decision to take is to work with an additive model or a multiplicative one. At first sight the variance does not seem to increase in a monotonic way. In fact plotting the time series or its logarithm yelds two very similar graphs.
+```{r, echo=FALSE}
+par(mfrow=c(2,1))
+plot(NPO_Time_Series)
+plot(log(NPO_Time_Series))
+```
+
+Besides the scale, they look pretty much the same. So we decide to go for the additive model and save in complexity.
+
+## Decomposition
+We perform the classical decomposition in trend, seasonal and random (residual)
+
+```{r}
+NPO.decomposed = decompose(NPO_Time_Series, type= "additive")
+plot(NPO.decomposed)
+```
+
+Our hunch regarding the trend is pretty clear, it shows a neat rebounce after 2003.
+
+Talking about the seasonal component one must be very carefull. Althought the pattern looks really nice, it's amplitude is one order of magnitude less that the random component.
+In fact, if we subract the sesonal component to the observed values we still obtain a pretty edgy line.
+
+```{r}
+plot(NPO_Time_Series - NPO.decomposed$seasonal)
+```
+
+Even trying with the "stl" package and tuning the "t.window" parameter yelds the same results (which are not reported here).
+
+We can get a furhter confirmation by using ggseasonplot and ggmonthplot
+```{r, echo=FALSE}
+ggmonthplot(NPO_Time_Series)
+ggseasonplot(NPO_Time_Series)
+```
+
+Basically every month in the monthplot follows the trend component and there is no clear pattern at all looking at the season plot.
+
+### Prediction
+We perform some prediction using the Holt-Winters method
+```{r}
+NPO.HW<- HoltWinters(NPO_Time_Series)
+pred.NPO.HW <- predict(NPO.HW, n.ahead=24, prediction.interval=TRUE)
+plot(NPO.HW, pred.NPO.HW, ylab="Credit", xlab="", main="")
+labs <- c("Observed values", "Fitted values", "Predicted intervals")
+legend("bottomleft", lty=rep(1,3), col=c("black", "red", "blue"), legend=labs)
+```
+
+The model is predicting a new inversion of the trend, but still with a very large confidence interval which can include a steady climb.
+
+# ARIMA Models and the Box-Jenkins methodology
+Based on what we have learned so far we can already take some decisions.
+
+1. The series is not stationary: we need to reduce it to a stationary one by means of differeciation
+2. The series does not need a moltiplicative model: we do not need a logarithmic transformation 
+3. The series does not show any clear seasonality or cyclicity: no need to make a seasonal arima model
+4. The autocorrelation plot shows a dumping sine and the partial correlation plot has a sharp cutoff after one: we may start to look for an AR(1) or AR(2) model.
+
+## Making the series stationary
+We will differenciate the series to make it stationary. This will also fix the degree of differenciation needed for the ARIMA model.
+```{r}
+tsdisplay(diff(NPO_Time_Series))
+tsdisplay(diff(diff(NPO_Time_Series)))
+```
+
+From the ACF and PACF plots above we can see that a good candidate for stationarity is differencing only once, this because all the correlations are in the confidence interval around zero while this is not true differencing two times.
+```{r}
+sd(diff(NPO_Time_Series))
+sd(diff(diff(NPO_Time_Series)))
+```
+Also, the standard deviation of the second order differenciation increases.
+
+We run some tests to check for stationarity
+```{r}
+adf.test(diff(NPO_Time_Series)) #ok
+pp.test(diff(NPO_Time_Series)) #ok
+```
+
+The low p-values in both tests suggest reject the null hypothesis of not stationarity.
+Even the command ndiffs agrees on one order of differenciation.
+```{r}
+ndiffs(NPO_Time_Series)
+```
+
+So the "d" parameter of the non seasonal ARIMA model will be set to 1.
+
+## Arima Modeling
+We are going to train three models. One with p=1, one with p=2 and one using the auto.arima function which should give us furhter inspiration.
+
+### AR(1)
+This will be the simplest model.
+
+```{r}
+NPO.ar1=Arima(NPO_Time_Series, order=c(1,1,0))
+summary(NPO.ar1)
+```
+We have an RMSE of 0.75 and a MAE of 0.54 to use as baseline. Please not that RMSE is more influenced by huge variations in the frequency of the residuals while MAE (mean absolute error) is more stable and always less than the RMSE. So in case that huge residuals are a cost for the model rather then the average performance, RMSE should be used, but this depends strictly on the goal of the model and on the costs associated with the error.
+
+The quality of the model is largely impacted by the randomness of its residuals. They must be as close as possible as white noise.
+
+All the auto correlations coefficients and the partial autocorrelation coefficients should be in the confidence range around zero.
+```{r}
+NPO.ar1.res.acf = acf2(NPO.ar1$residuals)
+```
+
+And they look surprisingly well.
+
+To go further we check for the overall randomness of the coefficients with the Box test, while tuning for the degree of freedom, as specified in the documentation of the "Box.test" function.
+
+```{r}
+Box.test(NPO.ar1$residuals, lag=12, fitdf = 1)
+```
+We cannot discard the null hypothesis of randomness, hence we are satisfied.
+
+Finally the residuals must follow a normal distribution. We perform the Jarque-Brera test for skewness and kurtosis.
+
+```{r}
+jarque.bera.test(NPO.ar1$residuals)
+```
+Which, unfortunately fails.
+Tp try to identify the cause we plot roughly plot the distribution of the residuals and we use the qqPlot function.
+```{r ,echo=FALSE}
+hist(NPO.ar1$residuals,breaks = 20)
+qqPlot(NPO.ar1$residuals)
+```
+
+We can see that there is a residual with a very high number close to -2.9 which is in position 6 (June 2000).
+After removing it we retrain the model and perform the test again.
+
+```{r}
+NPO_Time_Series_clean_ar1 = NPO_Time_Series[-6]
+NPO.clean.ar1 = Arima(NPO_Time_Series_clean_ar1, order=c(1,1,0))
+jarque.bera.test(NPO.clean.ar1$residuals)
+```
+
+The obtained p-value is not outstanding but for sure not close to 5%, so we cannot discard the null hypothesis that the distribution of the residuals has the same skewness and kurtosis of a normal one.
+
+Here follows the results of the final AR(1) model.
+```{r}
+summary(NPO.clean.ar1)
+acf2(NPO.clean.ar1$residuals)
+Box.test(NPO.clean.ar1$residuals, lag=12, fitdf = 1)
+```
+
+### AR(2)
+By performing the same exact procudere with p=2 we encounter the same problem with the same identical outlier.
+For brevity we only report the results after removing it (further details can be seen in the attached listing).
+
+```{r, echo=FALSE}
+NPO_Time_Series_clean_ar2 = NPO_Time_Series[-6]
+NPO.clean.ar2 = Arima(NPO_Time_Series_clean_ar2, order=c(2,1,0))
+summary(NPO.clean.ar2)
+acf2(NPO.clean.ar2$residuals)
+Box.test(NPO.clean.ar2$residuals, lag=12, fitdf = 1)
+jarque.bera.test(NPO.clean.ar2$residuals)
+```
+
+We can see that the model performs overall better in terms of RMSE and in quality of the residuals autocorrelations (plot and Box test), while the jarque brera test seems to yeld better results for the AR(0) model.
+
+### Automatic model
+We finally train a third model using the "auto.arima" function. Also in this case we have the same problem with the aforementioned outlier and we report directly the "cleaned" version.
+```{r}
+best.clean.NPO=auto.arima(NPO_Time_Series[-6],d=1,max.p=10,max.q=10)
+summary(best.clean.NPO)
+acf2(best.clean.NPO$residuals)
+Box.test(best.clean.NPO$residuals, lag=12)
+jarque.bera.test(best.clean.NPO$residuals)
+```
+
+This time the p value for the number of auto regressive term is even zero, that would concide with a random walk.
+
+It performs better than AR(1) but worese than AR(2) and we can see that the autocorrelation of the residuals has a value out of the confidence range.
+
+### Testing forecasting
+Finally we test the forecasting capabilities of our models by using the "getrmse" function defined as follows:
+```{r}
+getrmse <- function(x,h,...)
+{
+  train.end <- time(x)[length(x)-h]   #train data end
+  test.start <- time(x)[length(x)-h+1]  #test data start
+  train <- window(x,end=train.end) #extract train data
+  test <- window(x,start=test.start)  #extract test data
+  fit <- Arima(train,...) # fit model with train data
+  fc <- forecast(fit,h=h) # forecast with model
+  return(accuracy(fc,test)[2,"RMSE"]) #compare forecast with test data, extract the rmse
+}
+```
+
+Following the trial and error phylosophy we add also the training of a MA(1) part
+```{r}
+getrmse(NPO_Time_Series[-6],h=20,order=c(0,1,0))
+getrmse(NPO_Time_Series[-6],h=20,order=c(1,1,0))
+getrmse(NPO_Time_Series[-6],h=20,order=c(2,1,0)) # the best AR model
+getrmse(NPO_Time_Series[-6],h=20,order=c(0,1,1))
+getrmse(NPO_Time_Series[-6],h=20,order=c(2,1,1)) #the actual best
+```
+
+The actual best model apears to be the last and most complicated one, but the difference in RMSE is really small. While between the aforementioned AR models the AR(2) confirms to be the best one also in predictions.
+
+## Selected model
+First of all we discard the ARIMA model with p=2 and q=1 because the gain in accuracy is not enough to justify the increase of complexity of the model.
+
+Considering only the AR models, we choose to pick the AR(2) model as it consistenty has better accuracy, both for RMSE and MAE. It also has a better configuration of the auto-correlation coefficients of the residuals as none of them are outside the confidence range centered in zero. After the removal of the outlier it passes the Jarque-Brera test for normality of skewness and kurtosisof the residuals distribution.
+
+
+##Conclusions
+The obtained ARIMA model is a non-seasonal additive AR(2) model, with degree of differenciation equal to 1. This means that the value of the model at time "t" depends on a linear combination of the previous two.
+The obtained RMSE for the fitting is 0.65 while the mean absolute error is 0.5. Considering the average value of 16.15 the fitting error seems to be a good performance.
+
+Thinking about the forecasting outcome, we have obtained an RMSE of 1.95 which, gives a certain level of freedom and it is not sufficiently accurate for telling if the price will go up and down, which is the main point of forecasting this kind of data.
+
+##Notes
+We put a special effort in reporting the process of the selection of the ARIMA model as somewhat linear. This does not concide at all with the reality. The truth is that a lot of trial and error was involved in getting the results. This can be clearly seen by looking at the attached code (I, Giorgio, apologies for the comments in italian, although they shouldn't contain swear words).
+
+We also tried to be more concise, as suggested by the professor. For this reason this report contains more plots than words.
