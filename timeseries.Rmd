@@ -10,7 +10,7 @@ output:
 <a href="https://github.com/xmooner/IDA-TimeSeriesHomework"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub"></a>
 
 #Introduction
-This notebook was developed for the last assignment of the `Intelligent Data Analysis` course held by [Arminda Moreno Díaz](http://www.dia.fi.upm.es/es/amoreno) in UPM.
+This notebook was developed for the last assignment of the `Intelligent Data Analysis` course held by [Arminda Moreno Díaz](http://www.dia.fi.upm.es/es/amoreno) at UPM.
 
 Our dataset represent the total credit to the non-financial private sector annual rate. It is a monthly time
 series from January 2000 to December 2004.
