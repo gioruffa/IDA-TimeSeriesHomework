@@ -241,11 +241,13 @@ getrmse <- function(x,h,...)
 
 Following the trial and error phylosophy we add also the training of a MA(1) part
 ```{r}
-getrmse(NPO_Time_Series[-6],h=20,order=c(0,1,0))
-getrmse(NPO_Time_Series[-6],h=20,order=c(1,1,0))
-getrmse(NPO_Time_Series[-6],h=20,order=c(2,1,0)) # the best AR model
-getrmse(NPO_Time_Series[-6],h=20,order=c(0,1,1))
-getrmse(NPO_Time_Series[-6],h=20,order=c(2,1,1)) #the actual best
+NPO_Time_Series_clean_forecast = NPO_Time_Series
+NPO_Time_Series_clean_forecast[6] = tsoutliers(NPO_Time_Series)$replacements[1]
+getrmse(NPO_Time_Series_clean_forecast,h=20,order=c(0,1,0))
+getrmse(NPO_Time_Series_clean_forecast,h=20,order=c(1,1,0))
+getrmse(NPO_Time_Series_clean_forecast,h=20,order=c(2,1,0)) # the best AR model
+getrmse(NPO_Time_Series_clean_forecast,h=20,order=c(0,1,1))
+getrmse(NPO_Time_Series_clean_forecast,h=20,order=c(2,1,1)) #the actual best
 ```
 
 The actual best model apears to be the last and most complicated one, but the difference in RMSE is really small. While between the aforementioned AR models the AR(2) confirms to be the best one also in predictions.
@@ -260,9 +262,9 @@ Considering only the AR models, we choose to pick the AR(2) model as it consiste
 The obtained ARIMA model is a non-seasonal additive AR(2) model, with degree of differenciation equal to 1. This means that the value of the model at time "t" depends on a linear combination of the previous two.
 The obtained RMSE for the fitting is 0.65 while the mean absolute error is 0.5. Considering the average value of 16.15 the fitting error seems to be a good performance.
 
-Thinking about the forecasting outcome, we have obtained an RMSE of 1.95 which, gives a certain level of freedom and it is not sufficiently accurate for telling if the price will go up and down, which is the main point of forecasting this kind of data.
+Thinking about the forecasting outcome, we have obtained an RMSE of 1.97 which, gives a certain level of freedom and it is not sufficiently accurate for telling if the price will go up and down, which is the main point of forecasting this kind of data.
 
 ##Notes
-We put a special effort in reporting the process of the selection of the ARIMA model as somewhat linear. This does not concide at all with the reality. The truth is that a lot of trial and error was involved in getting the results. This can be clearly seen by looking at the attached code (I, Giorgio, apologies for the comments in italian, although they shouldn't contain swear words).
+We put a special effort in reporting the process of the selection of the ARIMA model as somewhat linear. This does not concide at all with the reality. The truth is that a lot of trial and error was involved in getting the results.
 
-We also tried to be more concise, as suggested by the professor. For this reason this report contains more plots than words.
+We purposedly left auto the usage of automatic techniques for ARIMA model selection, as it was outside the scope of the box-jenkins methodology.
