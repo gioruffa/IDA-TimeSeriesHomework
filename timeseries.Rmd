@@ -15,7 +15,7 @@ This notebook was developed for the last assignment of the `Intelligent Data Ana
 Our dataset represents the total credit to the non-financial private sector annual rate. It is a monthly time
 series from January 2000 to December 2004.
 
-The file can be found in the [page repository](https://github.com/xmooner/IDA-TimeSeriesHomework) under the name [`data_g11.xlsx`](https://github.com/xmooner/IDA-TimeSeriesHomework/blob/master/data_g11.xlsx).
+The file can be found in the [page's repository](https://github.com/xmooner/IDA-TimeSeriesHomework) under the name [`data_g11.xlsx`](https://github.com/xmooner/IDA-TimeSeriesHomework/blob/master/data_g11.xlsx).
 
 # Dataset Preparation and exploration
 We load the required libraries. We load the dataset and create a timeseries object with the frequency to 12 (as they are monthly data) in order to exploit seasonal plotting functions.
