@@ -9,7 +9,10 @@ output:
 ---
 <a href="https://github.com/xmooner/IDA-TimeSeriesHomework"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub"></a>
 
-Our dataset rappresent the total credit to the non-financial private sector annual rate. It is a monthly time
+#Introduction
+This notebook was developed for the last assignment of the `Intelligent Data Analysis` course held by [Arminda Moreno Díaz](http://www.dia.fi.upm.es/es/amoreno) in UPM.
+
+Our dataset represent the total credit to the non-financial private sector annual rate. It is a monthly time
 series from January 2000 to December 2004.
 
 The file can be found in the [page repository](https://github.com/xmooner/IDA-TimeSeriesHomework) under the name [`data_g11.xlsx`](https://github.com/xmooner/IDA-TimeSeriesHomework/blob/master/data_g11.xlsx).
@@ -36,16 +39,16 @@ summary(NPO_Time_Series)
 autoplot(NPO_Time_Series) 
 ```
 
-The data ranges from 13.47 to 20.23 and we can immediately see that there is an inversion of trend after the beginning of 2003 and that the trend component may be the most influencing one. At first sight there is no sign of seasonal of cyclical behaviours.
+The data ranges from 13.47 to 20.23 and we can immediately see that there is an inversion of trend after the beginning of 2003 and that the trend component may be the most influencing one. At first sight there is no sign of seasonal of cyclical behavior.
 
 ```{r, }
 NPO.acf = acf2(NPO_Time_Series)
 ```
 
-The autocorrelation plot shows a slow dumping sine, while the partial correlation plot has a sharp cutoff after one. This may suggest an ARIMA modeling using only the auto regressive component of the type AR(1) or AR(2), but we will see this later.
-Another conclusion that can be taken without testing formally is that the series does not definetelly look as a stationary one.
+The auto-correlation plot shows a slow dumping sine, while the partial correlation plot has a sharp cutoff after one. This may suggest an ARIMA modeling using only the auto regressive component of the type AR(1) or AR(2), but we will see this later.
+Another conclusion that can be taken without testing formally is that the series does not definitely look as a stationary one.
 
-Another important decision to take is to work with an additive model or a multiplicative one. At first sight the variance does not seem to increase in a monotonic way. In fact plotting the time series or its logarithm yelds two very similar graphs.
+Another important decision to take is to work with an additive model or a multiplicative one. At first sight the variance does not seem to increase in a monotonic way. In fact plotting the time series or its logarithm yields two very similar graphs.
 ```{r, echo=FALSE}
 par(mfrow=c(2,1))
 plot(NPO_Time_Series)
@@ -62,18 +65,18 @@ NPO.decomposed = decompose(NPO_Time_Series, type= "additive")
 plot(NPO.decomposed)
 ```
 
-Our hunch regarding the trend is pretty clear, it shows a neat rebounce after 2003.
+Our hunch regarding the trend is pretty clear, it shows a neat re-bounce after 2003.
 
-Talking about the seasonal component one must be very carefull. Althought the pattern looks really nice, it's amplitude is one order of magnitude less that the random component.
-In fact, if we subract the sesonal component to the observed values we still obtain a pretty edgy line.
+Talking about the seasonal component one must be very careful. Although the pattern looks really nice, it's amplitude is one order of magnitude less that the random component.
+In fact, if we subtract the seasonal component to the observed values we still obtain a pretty edgy line.
 
 ```{r}
 plot(NPO_Time_Series - NPO.decomposed$seasonal)
 ```
 
-Even trying with the "stl" package and tuning the "t.window" parameter yelds the same results (which are not reported here).
+Even trying with the "stl" package and tuning the "t.window" parameter yields the same results (which are not reported here).
 
-We can get a furhter confirmation by using ggseasonplot and ggmonthplot
+We can get a further confirmation by using ggseasonplot and ggmonthplot
 ```{r, echo=FALSE}
 ggmonthplot(NPO_Time_Series)
 ggseasonplot(NPO_Time_Series)
@@ -96,24 +99,24 @@ The model is predicting a new inversion of the trend, but still with a very larg
 # ARIMA Models and the Box-Jenkins methodology
 Based on what we have learned so far we can already take some decisions.
 
-1. The series is not stationary: we need to reduce it to a stationary one by means of differeciation
-2. The series does not need a moltiplicative model: we do not need a logarithmic transformation 
+1. The series is not stationary: we need to reduce it to a stationary one by means of differentiation
+2. The series does not need a multiplicative model: we do not need a logarithmic transformation 
 3. The series does not show any clear seasonality or cyclicity: no need to make a seasonal arima model
-4. The autocorrelation plot shows a dumping sine and the partial correlation plot has a sharp cutoff after one: we may start to look for an AR(1) or AR(2) model.
+4. The auto-correlation plot shows a dumping sine and the partial correlation plot has a sharp cutoff after one: we may start to look for an AR(1) or AR(2) model.
 
 ## Making the series stationary
-We will differenciate the series to make it stationary. This will also fix the degree of differenciation needed for the ARIMA model.
+We will differentiate the series to make it stationary. This will also fix the degree of differentiation needed for the ARIMA model.
 ```{r}
 tsdisplay(diff(NPO_Time_Series))
 tsdisplay(diff(diff(NPO_Time_Series)))
 ```
 
-From the ACF and PACF plots above we can see that a good candidate for stationarity is differencing only once, this because all the correlations are in the confidence interval around zero while this is not true differencing two times.
+From the ACF and PACF plots above we can see that a good candidate for stationarity is differentiating only once, this because all the correlations are in the confidence interval around zero while this is not true differentiating two times.
 ```{r}
 sd(diff(NPO_Time_Series))
 sd(diff(diff(NPO_Time_Series)))
 ```
-Also, the standard deviation of the second order differenciation increases.
+Also, the standard deviation of the second order differentiation increases.
 
 We run some tests to check for stationarity
 ```{r}
@@ -122,7 +125,7 @@ pp.test(diff(NPO_Time_Series)) #ok
 ```
 
 The low p-values in both tests suggest reject the null hypothesis of not stationarity.
-Even the command ndiffs agrees on one order of differenciation.
+Even the command ndiffs agrees on one order of differentiation.
 ```{r}
 ndiffs(NPO_Time_Series)
 ```
@@ -130,7 +133,7 @@ ndiffs(NPO_Time_Series)
 So the "d" parameter of the non seasonal ARIMA model will be set to 1.
 
 ## Arima Modeling
-We are going to train three models. One with p=1, one with p=2 and one using the auto.arima function which should give us furhter inspiration.
+We are going to train three models. One with p=1, one with p=2 and one using the auto.arima function which should give us further inspiration.
 
 ### AR(1)
 This will be the simplest model.
@@ -143,7 +146,7 @@ We have an RMSE of 0.75 and a MAE of 0.54 to use as baseline. Please not that RM
 
 The quality of the model is largely impacted by the randomness of its residuals. They must be as close as possible as white noise.
 
-All the auto correlations coefficients and the partial autocorrelation coefficients should be in the confidence range around zero.
+All the auto correlations coefficients and the partial auto-correlation coefficients should be in the confidence range around zero.
 ```{r}
 NPO.ar1.res.acf = acf2(NPO.ar1$residuals)
 ```
@@ -163,7 +166,7 @@ Finally the residuals must follow a normal distribution. We perform the Jarque-B
 jarque.bera.test(NPO.ar1$residuals)
 ```
 Which, unfortunately fails.
-Tp try to identify the cause we plot roughly plot the distribution of the residuals and we use the qqPlot function.
+To try to identify the cause we plot roughly plot the distribution of the residuals and we use the qqPlot function.
 ```{r ,echo=FALSE}
 hist(NPO.ar1$residuals,breaks = 20)
 qqPlot(NPO.ar1$residuals)
@@ -183,11 +186,11 @@ Simply removing them from the collection is not very wise as we should investiga
 ```{r}
 tsoutliers(NPO_Time_Series)
 ```
-`tsoutliers` agrees with us in the location of the outlier and sugges a value of 17.8. Let's take a look at values in the proxmity of the utlier.
+`tsoutliers` agrees with us in the location of the outlier and suggests a value of 17.8. Let's take a look at values in the proximity of the outlier.
 ```{r}
 NPO_Time_Series[4:10]
 ```
-If we accept the substitution proposed, the series will be like `20.23 18.82 17.87 16.85 16.69 18.66 18.14`. The net result is eliminating a local minimun, hence we will also elimintae a change of sign in the differentiated series.
+If we accept the substitution proposed, the series will be like `20.23 18.82 17.87 16.85 16.69 18.66 18.14`. The net result is eliminating a local minimum, hence we will also eliminate a change of sign in the differentiated series.
 Let's proceed with the suggestion.
 ```{r}
 NPO_Time_Series_clean_ar1 = NPO_Time_Series
@@ -208,10 +211,10 @@ summary(NPO.clean.ar1)
 acf2(NPO.clean.ar1$residuals)
 Box.test(NPO.clean.ar1$residuals, lag=12, fitdf = 1)
 ```
-Again, we cannot reject the null hipothesis that the model exibits lack of fit [(Box-Ljung test)](https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc4481.htm). 
+Again, we cannot reject the null hypothesis that the model exhibits lack of fit [(Box-Ljung test)](https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc4481.htm). 
 
 ### AR(2)
-By performing the same exact procudere with p=2 we encounter the same problem with the same identical outlier.
+By performing the same exact procedure with p=2 we encounter the same problem with the same identical outlier.
 For brevity we only report the results after replacing it (further details can be seen in the Rmd file).
 
 ```{r, echo=FALSE}
@@ -224,7 +227,7 @@ Box.test(NPO.clean.ar2$residuals, lag=12, fitdf = 1)
 jarque.bera.test(NPO.clean.ar2$residuals)
 ```
 
-We can see that the model performs overall better in terms of RMSE and in quality of the residuals autocorrelations (plot and Box test), while the jarque brera test seems to yeld better results for the AR(0) model.
+We can see that the model performs overall better in terms of RMSE and in quality of the residuals auto-correlation (plot and Box test), while the Jarque Brera test seems to yield better results for the AR(0) model.
 
 ### Testing forecasting
 Finally we test the forecasting capabilities of our models by using the "getrmse" function defined as follows:
@@ -241,7 +244,7 @@ getrmse <- function(x,h,...)
 }
 ```
 
-Following the trial and error phylosophy we add also the training of a MA(1) part
+Following the trial and error philosophy we add also the training of a MA(1) part
 ```{r}
 NPO_Time_Series_clean_forecast = NPO_Time_Series
 NPO_Time_Series_clean_forecast[6] = tsoutliers(NPO_Time_Series)$replacements[1]
@@ -252,21 +255,21 @@ getrmse(NPO_Time_Series_clean_forecast,h=20,order=c(0,1,1))
 getrmse(NPO_Time_Series_clean_forecast,h=20,order=c(2,1,1)) #the actual best
 ```
 
-The actual best model apears to be the last and most complicated one, but the difference in RMSE is really small. While between the aforementioned AR models the AR(2) confirms to be the best one also in predictions.
+The actual best model appears to be the last and most complicated one, but the difference in RMSE is really small. While between the aforementioned AR models the AR(2) confirms to be the best one also in predictions.
 
 ## Selected model
 First of all we discard the ARIMA model with p=2 and q=1 because the gain in accuracy is not enough to justify the increase of complexity of the model.
 
-Considering only the AR models, we choose to pick the AR(2) model as it consistenty has better accuracy, both for RMSE and MAE. It also has a better configuration of the auto-correlation coefficients of the residuals as none of them are outside the confidence range centered in zero. After the removal of the outlier it passes the Jarque-Brera test for normality of skewness and kurtosisof the residuals distribution.
+Considering only the AR models, we choose to pick the AR(2) model as it consistenty has better accuracy, both for RMSE and MAE. It also has a better configuration of the auto-correlation coefficients of the residuals as none of them are outside the confidence range centered in zero. After the removal of the outlier it passes the Jarque-Brera test for normality of skewness and kurtosis of the residuals distribution.
 
 
 ##Conclusions
-The obtained ARIMA model is a non-seasonal additive AR(2) model, with degree of differenciation equal to 1. This means that the value of the model at time "t" depends on a linear combination of the previous two.
+The obtained ARIMA model is a non-seasonal additive AR(2) model, with degree of differentiation equal to 1. This means that the value of the model at time "t" depends on a linear combination of the previous two.
 The obtained RMSE for the fitting is 0.65 while the mean absolute error is 0.5. Considering the average value of 16.15 the fitting error seems to be a good performance.
 
 Thinking about the forecasting outcome, we have obtained an RMSE of 1.97 which, gives a certain level of freedom and it is not sufficiently accurate for telling if the price will go up and down, which is the main point of forecasting this kind of data.
 
 ##Notes
-We put a special effort in reporting the process of the selection of the ARIMA model as somewhat linear. This does not concide at all with the reality. The truth is that a lot of trial and error was involved in getting the results.
+We put a special effort in reporting the process of the selection of the ARIMA model as somewhat linear. This does not coincide at all with the reality. The truth is that a lot of trial and error was involved in getting the results.
 
-We purposedly left auto the usage of automatic techniques for ARIMA model selection, as it was outside the scope of the box-jenkins methodology.
+We purposely left auto the usage of automatic techniques for ARIMA model selection, as it was outside the scope of the Box-Jenkins methodology.
