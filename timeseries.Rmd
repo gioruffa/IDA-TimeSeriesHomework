@@ -224,23 +224,6 @@ jarque.bera.test(NPO.clean.ar2$residuals)
 
 We can see that the model performs overall better in terms of RMSE and in quality of the residuals autocorrelations (plot and Box test), while the jarque brera test seems to yeld better results for the AR(0) model.
 
-### Automatic model
-We finally train a third model using the "auto.arima" function. Also in this case we have the same problem with the aforementioned outlier and we report directly the "cleaned" version.
-```{r}
-NPO_Time_Series_clean_auto = NPO_Time_Series
-NPO_Time_Series_clean_auto[6] = tsoutliers(NPO_Time_Series)$replacements[1]
-
-best.clean.NPO=auto.arima(NPO_Time_Series_clean_auto,d=1,max.p=10,max.q=10)
-summary(best.clean.NPO)
-acf2(best.clean.NPO$residuals)
-Box.test(best.clean.NPO$residuals, lag=12)
-jarque.bera.test(best.clean.NPO$residuals)
-```
-
-This time the p value for the number of auto regressive term is even zero, that would concide with a random walk.
-
-It performs better than AR(1) but worese than AR(2) and we can see that the autocorrelation of the residuals has a value out of the confidence range.
-
 ### Testing forecasting
 Finally we test the forecasting capabilities of our models by using the "getrmse" function defined as follows:
 ```{r}
